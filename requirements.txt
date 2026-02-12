@@ -2,7 +2,8 @@ flask
 flask-cors
 numpy
 pandas
-scikit-learn
+scikit-learn==1.7.1
 scipy
 joblib
 gunicorn
+lightgbm
