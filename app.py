@@ -6,6 +6,7 @@ import joblib
 from pathlib import Path
 from scipy.signal import welch
 from scipy.integrate import trapezoid
+import model_defs
 
 app = Flask(__name__)
 CORS(app)
