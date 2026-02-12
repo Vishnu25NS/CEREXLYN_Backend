@@ -7,6 +7,14 @@ from pathlib import Path
 from scipy.signal import welch
 from scipy.integrate import trapezoid
 import model_defs
+import sys
+import types
+
+# Create fake __main__ module and attach class there
+main_module = sys.modules["__main__"]
+
+from model_defs import FixedVotingClassifier
+setattr(main_module, "FixedVotingClassifier", FixedVotingClassifier)
 
 app = Flask(__name__)
 CORS(app)
