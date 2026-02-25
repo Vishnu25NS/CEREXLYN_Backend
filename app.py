@@ -204,5 +204,26 @@ def predict_live():
         "prediction": pred,
         "probabilities": proba
     })
+@app.get("/sessions")
+def get_sessions():
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT * FROM sessions
+            ORDER BY id DESC
+            LIMIT 10;
+        """)
+
+        sessions = cur.fetchall()
+
+        cur.close()
+        conn.close()
+
+        return jsonify(sessions)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 if __name__ == "__main__":
     app.run()
