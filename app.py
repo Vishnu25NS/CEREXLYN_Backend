@@ -234,5 +234,37 @@ def get_sessions():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+@app.post("/users")
+def create_user():
+    data = request.get_json()
+
+    name = data.get("name")
+    age = data.get("age")
+    gender = data.get("gender")
+    place = data.get("place")
+
+    if not name or not age:
+        return jsonify({"error": "Name and age required"}), 400
+
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            INSERT INTO users (name, age, gender, place)
+            VALUES (%s, %s, %s, %s)
+            RETURNING id;
+        """, (name, age, gender, place))
+
+        user_id = cur.fetchone()["id"]
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"user_id": user_id})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 if __name__ == "__main__":
     app.run()
