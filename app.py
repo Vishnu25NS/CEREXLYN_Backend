@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from db import get_connection
 from flask_cors import CORS
 import numpy as np
 import pandas as pd
@@ -17,6 +18,35 @@ from model_defs import FixedVotingClassifier
 setattr(main_module, "FixedVotingClassifier", FixedVotingClassifier)
 
 app = Flask(__name__)
+def init_db():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS sessions (
+        id SERIAL PRIMARY KEY,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        duration INTEGER,
+        prediction INTEGER,
+        confidence FLOAT
+    );
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS eeg_features (
+        session_id INTEGER REFERENCES sessions(id),
+        fp1_mean FLOAT,
+        fp1_std FLOAT,
+        fp2_mean FLOAT,
+        fp2_std FLOAT
+    );
+    """)
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+init_db()
 CORS(app)
 from sklearn.ensemble import VotingClassifier
 import numpy as np
@@ -132,6 +162,43 @@ def predict_live():
 
     pred = int(clf.predict(Xs)[0])
     proba = clf.predict_proba(Xs).tolist()[0]
+    confidence = float(max(proba) * 100)
+        # ================= DATABASE SAVE =================
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        INSERT INTO sessions (duration, prediction, confidence)
+        VALUES (%s, %s, %s)
+        RETURNING id;
+    """, (
+        len(fp1) // fs,
+        pred,
+        confidence
+    ))
+
+    session_id = cur.fetchone()["id"]
+
+    fp1_mean = float(np.mean(sig_fp1))
+    fp1_std  = float(np.std(sig_fp1))
+    fp2_mean = float(np.mean(sig_fp2))
+    fp2_std  = float(np.std(sig_fp2))
+
+    cur.execute("""
+        INSERT INTO eeg_features
+        (session_id, fp1_mean, fp1_std, fp2_mean, fp2_std)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (
+        session_id,
+        fp1_mean,
+        fp1_std,
+        fp2_mean,
+        fp2_std
+    ))
+
+    conn.commit()
+    cur.close()
+    conn.close()
 
     return jsonify({
         "prediction": pred,
