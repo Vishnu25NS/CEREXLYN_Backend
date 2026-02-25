@@ -127,7 +127,9 @@ FEATS = [
 @app.post("/predict_live")
 def predict_live():
     data = request.get_json(force=True)
-
+    user_id = data.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Missing user_id"}), 400
     fp1 = data.get("fp1", [])
     fp2 = data.get("fp2", [])
     fs = int(data.get("sampling_rate", 125))
@@ -182,14 +184,14 @@ def predict_live():
     cur = conn.cursor()
 
     cur.execute("""
-        INSERT INTO sessions (duration, prediction, confidence)
-        VALUES (%s, %s, %s)
-        RETURNING id;
-    """, (
-        len(fp1) // fs,
-        pred,
-        confidence
-    ))
+    INSERT INTO sessions (user_id, duration, prediction)
+    VALUES (%s, %s, %s)
+    RETURNING id;
+""", (
+    user_id,
+    len(fp1) // fs,
+    pred
+))
 
     session_id = cur.fetchone()["id"]
 
