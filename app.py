@@ -42,6 +42,11 @@ CREATE TABLE IF NOT EXISTS users (
 );
 """)
     cur.execute("""
+ALTER TABLE sessions
+ADD COLUMN IF NOT EXISTS user_id INTEGER
+REFERENCES users(id) ON DELETE CASCADE;
+""")
+    cur.execute("""
     CREATE TABLE IF NOT EXISTS eeg_features (
         session_id INTEGER REFERENCES sessions(id),
         fp1_mean FLOAT,
