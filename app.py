@@ -31,7 +31,16 @@ def init_db():
         confidence FLOAT
     );
     """)
-
+    cur.execute("""
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    age INTEGER NOT NULL,
+    gender TEXT,
+    place TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+""")
     cur.execute("""
     CREATE TABLE IF NOT EXISTS eeg_features (
         session_id INTEGER REFERENCES sessions(id),
