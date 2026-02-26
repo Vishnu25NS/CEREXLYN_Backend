@@ -273,5 +273,26 @@ def create_user():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+@app.get("/users")
+def get_users():
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT id, name, age, gender, place, created_at
+            FROM users
+            ORDER BY id DESC;
+        """)
+
+        users = cur.fetchall()
+
+        cur.close()
+        conn.close()
+
+        return jsonify(users)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 if __name__ == "__main__":
     app.run()
