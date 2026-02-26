@@ -294,5 +294,23 @@ def get_users():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+@app.post("/reset_db")
+def reset_db():
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+
+        cur.execute("DELETE FROM eeg_features;")
+        cur.execute("DELETE FROM sessions;")
+        cur.execute("DELETE FROM users;")
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"message": "Database cleared successfully"})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 if __name__ == "__main__":
     app.run()
