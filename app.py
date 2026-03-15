@@ -312,7 +312,7 @@ def reset_db():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-@app.post("/clean_users")
+@app.get("/clean_users")
 def clean_users():
     try:
         conn = get_connection()
