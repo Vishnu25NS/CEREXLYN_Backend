@@ -222,7 +222,7 @@ def predict_live():
         "duration": len(fp1) // fs,
         "avg_amplitude": float((abs(fp1_mean) + abs(fp2_mean)) / 2)
 })
-@app.delete("/sessions/<int:session_id>")
+@app.delete("/session/<int:session_id>")
 def delete_session(session_id):
     try:
         conn = get_connection()
