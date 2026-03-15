@@ -218,8 +218,10 @@ def predict_live():
 
     return jsonify({
         "prediction": pred,
-        "probabilities": proba
-    })
+        "probabilities": proba,
+        "duration": len(fp1) // fs,
+        "avg_amplitude": float((abs(fp1_mean) + abs(fp2_mean)) / 2)
+})
 
 @app.get("/sessions/<int:user_id>")
 def get_sessions(user_id):
