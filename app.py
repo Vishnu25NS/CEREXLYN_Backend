@@ -220,17 +220,19 @@ def predict_live():
         "prediction": pred,
         "probabilities": proba
     })
-@app.get("/sessions")
-def get_sessions():
+
+@app.get("/sessions/<int:user_id>")
+def get_sessions(user_id):
     try:
         conn = get_connection()
         cur = conn.cursor()
 
         cur.execute("""
             SELECT * FROM sessions
+            WHERE user_id = %s
             ORDER BY id DESC
-            LIMIT 10;
-        """)
+            LIMIT 30;
+        """, (user_id,))
 
         sessions = cur.fetchall()
 
@@ -257,15 +259,26 @@ def create_user():
         conn = get_connection()
         cur = conn.cursor()
 
+        # check if user already exists
         cur.execute("""
-            INSERT INTO users (name, age, gender, place)
-            VALUES (%s, %s, %s, %s)
-            RETURNING id;
-        """, (name, age, gender, place))
+            SELECT id FROM users
+            WHERE name=%s AND age=%s AND place=%s
+        """, (name, age, place))
 
-        user_id = cur.fetchone()["id"]
+        existing_user = cur.fetchone()
 
-        conn.commit()
+        if existing_user:
+            user_id = existing_user["id"]
+        else:
+            cur.execute("""
+                INSERT INTO users (name, age, gender, place)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id;
+            """, (name, age, gender, place))
+
+            user_id = cur.fetchone()["id"]
+            conn.commit()
+
         cur.close()
         conn.close()
 
@@ -294,6 +307,36 @@ def get_users():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+@app.get("/risk_status/<int:user_id>")
+def risk_status(user_id):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT prediction
+        FROM sessions
+        WHERE user_id = %s
+        ORDER BY id DESC
+        LIMIT 7;
+    """, (user_id,))
+
+    sessions = cur.fetchall()
+
+    high_risk = sum(1 for s in sessions if s["prediction"] == 1)
+
+    status = "normal"
+
+    if high_risk >= 4:
+        status = "monitor"
+
+    cur.close()
+    conn.close()
+
+    return jsonify({
+        "last_sessions": len(sessions),
+        "high_risk_count": high_risk,
+        "status": status
+    })
 @app.post("/reset_db")
 def reset_db():
     try:
