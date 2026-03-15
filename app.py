@@ -222,7 +222,32 @@ def predict_live():
         "duration": len(fp1) // fs,
         "avg_amplitude": float((abs(fp1_mean) + abs(fp2_mean)) / 2)
 })
+@app.delete("/sessions/<int:session_id>")
+def delete_session(session_id):
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
 
+        # delete related eeg features first
+        cur.execute("""
+            DELETE FROM eeg_features
+            WHERE session_id = %s
+        """, (session_id,))
+
+        # delete the session
+        cur.execute("""
+            DELETE FROM sessions
+            WHERE id = %s
+        """, (session_id,))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"message": f"Session {session_id} deleted successfully"})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 @app.get("/sessions/<int:user_id>")
 def get_sessions(user_id):
     try:
