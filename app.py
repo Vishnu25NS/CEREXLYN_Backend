@@ -312,5 +312,27 @@ def reset_db():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+@app.post("/clean_users")
+def clean_users():
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+
+        # delete users that are not referenced in sessions
+        cur.execute("""
+            DELETE FROM users
+            WHERE id NOT IN (
+                SELECT DISTINCT user_id FROM sessions
+            );
+        """)
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"message": "Unused duplicate users removed"})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 if __name__ == "__main__":
     app.run()
