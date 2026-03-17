@@ -123,7 +123,9 @@ FEATS = [
     for band in ["delta","theta","alpha","beta","gamma"]
     for ch in ["Fp1","Fp2","F3","F4","O1","O2"]
 ]
-
+@app.get("/")
+def home():
+    return "Cerexlyn Backend Running"
 @app.post("/predict_live")
 def predict_live():
     data = request.get_json(force=True)
@@ -137,7 +139,7 @@ def predict_live():
     o1  = data.get("o1", [])
     o2  = data.get("o2", [])
     fs = int(data.get("sampling_rate", 125))
-
+    duration = int(data.get("duration", len(fp1) // fs))
     if not all([fp1, fp2, f3, f4, o1, o2]):
         return jsonify({"error": "Missing EEG channel data"}), 400
 
@@ -147,7 +149,29 @@ def predict_live():
     sig_f4  = np.array(f4, dtype=np.float32)
     sig_o1  = np.array(o1, dtype=np.float32)
     sig_o2  = np.array(o2, dtype=np.float32)
+# ================= BAD CHANNEL HANDLING =================
 
+    def is_bad(sig):
+        return np.mean(np.abs(sig)) < 500 or np.std(sig) < 50
+
+# Replace weak channels safely
+
+# If fp2 (likely your ch2) is bad
+    if is_bad(sig_fp2):
+        sig_fp2 = sig_fp1  # fallback to fp1
+
+# If any others weak (just in case)
+    if is_bad(sig_f3):
+        sig_f3 = (sig_fp1 + sig_fp2) / 2
+
+    if is_bad(sig_f4):
+        sig_f4 = (sig_fp1 + sig_fp2) / 2
+
+    if is_bad(sig_o1):
+        sig_o1 = sig_fp1
+
+    if is_bad(sig_o2):
+        sig_o2 = sig_fp2
     if any(len(sig) < fs for sig in [sig_fp1, sig_fp2, sig_f3, sig_f4, sig_o1, sig_o2]):
         return jsonify({"error": "Insufficient EEG data"}), 400
 
@@ -199,7 +223,7 @@ def predict_live():
     RETURNING id;
 """, (
     user_id,
-    len(fp1) // fs,
+    duration,
     pred
 ))
 
@@ -229,7 +253,7 @@ def predict_live():
     return jsonify({
         "prediction": pred,
         "probabilities": proba,
-        "duration": len(fp1) // fs,
+        "duration": duration,
         "avg_amplitude": float((abs(fp1_mean) + abs(fp2_mean)) / 2)
 })
 @app.delete("/session/<int:session_id>")
