@@ -132,15 +132,23 @@ def predict_live():
         return jsonify({"error": "Missing user_id"}), 400
     fp1 = data.get("fp1", [])
     fp2 = data.get("fp2", [])
+    f3  = data.get("f3", [])
+    f4  = data.get("f4", [])
+    o1  = data.get("o1", [])
+    o2  = data.get("o2", [])
     fs = int(data.get("sampling_rate", 125))
 
-    if not fp1 or not fp2:
-        return jsonify({"error": "Missing fp1/fp2 data"}), 400
+    if not all([fp1, fp2, f3, f4, o1, o2]):
+        return jsonify({"error": "Missing EEG channel data"}), 400
 
     sig_fp1 = np.array(fp1, dtype=np.float32)
     sig_fp2 = np.array(fp2, dtype=np.float32)
+    sig_f3  = np.array(f3, dtype=np.float32)
+    sig_f4  = np.array(f4, dtype=np.float32)
+    sig_o1  = np.array(o1, dtype=np.float32)
+    sig_o2  = np.array(o2, dtype=np.float32)
 
-    if len(sig_fp1) < fs or len(sig_fp2) < fs:
+    if any(len(sig) < fs for sig in [sig_fp1, sig_fp2, sig_f3, sig_f4, sig_o1, sig_o2]):
         return jsonify({"error": "Insufficient EEG data"}), 400
 
     def bandpower(sig, fs, band):
@@ -161,17 +169,19 @@ def predict_live():
 
     fp1_bp = {b: bandpower(sig_fp1, fs, bands[b]) for b in bands}
     fp2_bp = {b: bandpower(sig_fp2, fs, bands[b]) for b in bands}
-
-    def avg(a, b): return 0.5 * (a + b)
+    f3_bp = {b: bandpower(sig_f3, fs, bands[b]) for b in bands}
+    f4_bp = {b: bandpower(sig_f4, fs, bands[b]) for b in bands}
+    o1_bp = {b: bandpower(sig_o1, fs, bands[b]) for b in bands}
+    o2_bp = {b: bandpower(sig_o2, fs, bands[b]) for b in bands}
 
     features = {}
     for b in bands:
         features[f"{b}_Fp1"] = fp1_bp[b]
         features[f"{b}_Fp2"] = fp2_bp[b]
-        features[f"{b}_F3"]  = avg(fp1_bp[b], fp2_bp[b])
-        features[f"{b}_F4"]  = avg(fp1_bp[b], fp2_bp[b])
-        features[f"{b}_O1"]  = fp1_bp[b]
-        features[f"{b}_O2"]  = fp2_bp[b]
+        features[f"{b}_F3"]  = f3_bp[b]
+        features[f"{b}_F4"]  = f4_bp[b]
+        features[f"{b}_O1"]  = o1_bp[b]
+        features[f"{b}_O2"]  = o2_bp[b]
 
     X = pd.DataFrame([features])[FEATS]
     Xs = scaler.transform(X)
